@@ -1,177 +1,35 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<assert.h>
-#include<queue>
-#include<locale.h>
+#include<string.h>
+#include<stack>
 using namespace std;
 
 #define DATA_FILE "akinator_data.txt"
 
-
-
-/* TODO
-   Переписать алгоритм заполнения и вывода
-   Убрать scanf'ы
-*/
-
-struct tree
+typedef struct tree
 {
+    struct tree *no,
+                *yes;
     char* question;
-    struct tree* yes;
-	struct tree* no;
-};
+} Tree;
 
-typedef struct tree Tree;
-
-typedef enum{ANSWER, QUESTION, EMPTY} Type_String;
-bool IsQuestion(Tree*);
-Tree* init_new_part_of_tree(char* added_element);
-
-//чассть кода, отвечающая за хранение и заполнение дерева
-
-void tree_save(Tree* current, FILE* out)
+Tree* init_new_part_of_tree(char* added_element)
 {
-	assert(current != NULL);
-	assert(out     != NULL);
+	Tree* init_tree = new tree;
+	init_tree->question = new char [100];
 
-	bool EndTree = false;
-	queue<Tree*> tree_queue;
+	if((NULL == init_tree)||(NULL == init_tree->question))
+    {
+            printf("Memory Error");
+            return NULL;
+    }
 
-	tree_queue.push(current);
+	strcpy(init_tree->question, added_element);
 
-	int i = 1;
-	int count_of_strings = 0;
-
-	fprintf(out, "           \n");
-	do
-	{
-		EndTree = true;
-		for(int j=0; j<i; j++)
-		{
-			current = tree_queue.front();
-			tree_queue.pop();
-			if(current != NULL)
-			{
-				if(IsQuestion(current))
-				{
-					EndTree = false;
-					tree_queue.push(current->yes);
-					tree_queue.push(current->no);
-					fprintf(out, "%s:q ", current->question);
-				}
-				else
-				{
-					tree_queue.push(NULL);
-					tree_queue.push(NULL);
-					fprintf(out, "%s:a ", current->question);
-				}
-			}
-			else
-			{
-				fprintf(out, ":e ");
-				tree_queue.push(NULL);
-				tree_queue.push(NULL);
-			}
-		}
-		fprintf(out,"\n");
-		i = 2*i;
-		count_of_strings++;
-	}
-	while(!EndTree);
-
-	fseek(out, 0, SEEK_SET);
-
-	fprintf(out, "%d", count_of_strings);
-}
-
-
-void replase_question(Tree* tree, char* new_question)
-{
-	int i=0;
-	while(new_question[i]!='\0')
-	{
-		tree->question[i] = new_question[i];
-		i++;
-	}
-	tree->question[i]='\0';
-}
-
-Type_String get_Type_String(char* added)
-{
-	int i=0;
-	while(added[i]!='\0')
-	{
-		i++;
-	}
-
-	added[i-2] = '\0';
-
-	switch(added[i-1])
-	{
-		case 'q': return QUESTION;
-		case 'a': return ANSWER;
-		case 'e': return EMPTY;
-	}
-}
-
-Tree* tree_init(FILE* in)
-{
-	Tree *new_tree = init_new_part_of_tree("");;
-	Tree *current;
-
-	char* added = new char [1000];
-
-	queue<Tree*> tree_queue;
-	tree_queue.push(new_tree);
-
-	int count_of_strings,
-	    count_ = 0;
-
-	fscanf(in, "%d\n", &count_of_strings);
-
-	int i = 1;
-	while(count_ != count_of_strings)
-	{
-		for(int j=0; j<i; j++)
-		{
-			current = tree_queue.front();
-			tree_queue.pop();
-
-			fscanf(in, "%s ", added);
-
-			switch(get_Type_String(added)) //возвращает тип строки и удаляет символ, позволяющий распознать строку
-			{
-				case ANSWER:
-					replase_question(current, added);
-					tree_queue.push(NULL);
-					tree_queue.push(NULL);
-					break;
-				case QUESTION:
-					replase_question(current, added);
-					current->yes = init_new_part_of_tree("");
-					current->no  = init_new_part_of_tree("");
-					tree_queue.push(current->yes);
-					tree_queue.push(current->no);
-					break;
-				case EMPTY:
-				    	assert(NULL == current);
-				    	tree_queue.push(NULL);
-					tree_queue.push(NULL);
-					break;
-			}
-		}
-		i = 2*i;
-		count_++;
-	}
-
-	delete [] added;
-	return new_tree;
-}
-
-//часть кода, отвечающая за основную чась
-void clean_stdin()
-{
-	while(getchar() != '\n');
+	init_tree->no  = NULL;
+	init_tree->yes = NULL;
+	return init_tree;
 }
 
 bool IsQuestion(Tree* current)
@@ -182,29 +40,96 @@ bool IsQuestion(Tree* current)
 	return current->yes;
 }
 
-
-Tree* init_new_part_of_tree(char* added_element)
+void skip_words(FILE* file)
 {
-	Tree* init_tree = (Tree*)malloc(sizeof(Tree));
-	init_tree->question = (char*)malloc(500*sizeof(char));
-
-	if((NULL == init_tree)||(NULL == init_tree->question))
-        {
-                printf("Memory Error");
-                return NULL;
-        }
-	replase_question(init_tree, added_element);
-	init_tree->no  = NULL;
-	init_tree->yes = NULL;
-
-	return init_tree;
+    char str[100];
+    fscanf(file, "%[^()]", str);
 }
 
+void skip_brackets(FILE* file)
+{
+    char c = getc(file);
+
+    assert(c=='(');
+
+    int brace = 1;
+    while(brace)
+    {
+        c = getc(file);
+        if(c == '(') brace++;
+        if(c == ')') brace--;
+    }
+}
+
+bool find_new_start_positions(unsigned long int *left_start_position, unsigned long int *right_start_position, unsigned long int start_position, FILE* file)
+{
+    fseek(file, start_position, SEEK_SET);
+
+    skip_words(file);
+
+    if(getc(file) != '(')
+        return false;
+    else
+    {
+        ungetc('(', file);
+
+        *left_start_position = ftell(file)+1;
+
+        skip_brackets(file);
+
+        *right_start_position = ftell(file)+1;
+        return true;
+    }
+}
+
+Tree* _Tree_Read(unsigned long int start_position, FILE* file)
+{
+    char question[100];
+    unsigned long int left_start_position = 0,
+                     right_start_position = 0;
+
+    fseek(file, start_position, SEEK_SET);
+
+    fscanf(file, "%[^()]", question);
+
+    Tree* ret = init_new_part_of_tree(question);
+
+    if(find_new_start_positions(&left_start_position, &right_start_position, start_position, file))
+    {
+        ret->yes = _Tree_Read( left_start_position, file);
+        ret->no  = _Tree_Read(right_start_position, file);
+    }
+
+    return ret;
+}
+
+Tree* Tree_Read(FILE* file)
+{
+    unsigned long int start_position = 0;
+
+    return _Tree_Read(start_position, file);
+}
+
+void Tree_Save(Tree* current, FILE* file) //сначала левое, потом - правое
+{
+    assert(current != NULL);
+
+    fprintf(file, "%s", current->question);
+
+    if(IsQuestion(current))
+    {
+        fprintf(file, "(");
+        Tree_Save(current->yes, file);
+        fprintf(file, ")(");
+        Tree_Save(current->no, file);
+        fprintf(file, ")");
+    }
+}
 
 Tree* copy(Tree* current)
 {
 	assert(current != NULL);
-	Tree* copy_tree = (Tree*)malloc(sizeof(Tree));
+	Tree* copy_tree = new Tree;
 
 	if(NULL == copy_tree)
 	{
@@ -212,13 +137,13 @@ Tree* copy(Tree* current)
 		return NULL;
 	}
 
-	copy_tree->question = current->question;
+	copy_tree->question = new char [100];
+	strcpy(copy_tree->question,current->question);
 	copy_tree->no  = NULL;
 	copy_tree->yes = NULL;
 
 	return copy_tree;
 }
-
 
 void add_new_element(Tree* current,char* added_element, char* added_question)
 {
@@ -230,16 +155,18 @@ void add_new_element(Tree* current,char* added_element, char* added_question)
 	new_no  = copy(current);
 	new_yes = init_new_part_of_tree(added_element);
 
-	current->question = added_question;
+	strcpy(current->question, added_question);
 	current->no  = new_no;
 	current->yes = new_yes;
 }
 
+void clean_stdin()
+{
+	while(getchar() != '\n');
+}
 
 void akinator(Tree* current)
 {
-	setlocale(0, "RUS");
-
 	char answer,
 	     added_element[1000],
 	     added_question[1000];
@@ -266,30 +193,67 @@ void akinator(Tree* current)
 		if('N' == answer)
 		{
 			printf("Что же это?\n");
-			scanf("%s", added_element);
+			scanf("%[^\n]", added_element);
+			clean_stdin();
 			printf("В чём разница между %s и %s?\n", added_element, current->question); //предполагает ответ вида "<описание нового элемента>"
-			scanf("%s", added_question);
+			scanf("%[^\n]", added_question);
+			clean_stdin();
 			add_new_element(current, added_element, added_question);
 		}
 
 		if('Y' == answer)
 		{
-			printf("LOL, UGADAL ZAEBIS\n");
+			printf("LOL, UGADAL\n");
 		}
 	}
 }
 
+void Tree_Destroy(Tree* current)
+{
+    if(IsQuestion(current))
+    {
+        Tree_Destroy(current->no);
+        Tree_Destroy(current->yes);
+    }
+
+    assert(current->question!=NULL);
+    delete [] current->question;
+    assert(current!=NULL);
+    delete current ;
+}
 
 int main()
 {
 	FILE* f = fopen(DATA_FILE, "r");
-	Tree* new_tree = tree_init(f);
-	fclose(f);
+    Tree* tree = Tree_Read(f);
+    fclose(f);
 
-	akinator(new_tree);
+    bool quite = false;
+    char answer;
+
+    while(!quite)
+	{
+	    do
+        {
+            printf("\nNEW GAME?:Y/N\n");
+            answer = getchar();
+            clean_stdin();
+        }
+        while((answer!='Y')&&(answer!='N'));
+
+        if(answer=='Y')
+            akinator(tree);
+
+        if(answer=='N')
+            quite = true;
+    }
+
 
 	f = fopen(DATA_FILE, "w");
-	tree_save(new_tree, f);
-	fclose(f);
+	Tree_Save(tree, f);
+    fclose(f);
+
+	Tree_Destroy(tree);
 	return 0;
 }
+

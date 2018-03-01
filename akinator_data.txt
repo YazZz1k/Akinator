@@ -1,6 +1,1 @@
-5          
-человек:q 
-Играет_В_Футбол:q Камень:a 
-Норм_Чел:q Качок:q :e :e 
-Балышев:a Артемий:a Правит:q Овощ:q :e :e :e :e 
-:e :e :e :e Путин:a Ефим:a Саня:a Путин:a :e :e :e :e :e :e :e :e 
+chelovek(Sidit(Belarus(Tesak)(Navalniy))(Mertv(Natcist(Gitler)(Lenin))(Futbolist(Cherniy(Pogba)(Cristiano Ronaldo))(Kandidat ot naroda(Grudinin)(Putin)))))(Na ney pishut(Bumaga)(Frukt(Yabloko)(Ovosh(Pomidor)(Kamen))))
