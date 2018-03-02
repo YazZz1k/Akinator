@@ -1,3 +1,5 @@
+#include"akinator_data.hpp"
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<assert.h>
@@ -7,12 +9,14 @@ using namespace std;
 
 #define DATA_FILE "akinator_data.txt"
 
-typedef struct tree
+
+/*typedef struct tree
 {
     struct tree *no,
                 *yes;
     char* question;
-} Tree;
+} Tree;*/
+
 
 Tree* init_new_part_of_tree(char* added_element)
 {
@@ -32,6 +36,7 @@ Tree* init_new_part_of_tree(char* added_element)
 	return init_tree;
 }
 
+
 bool IsQuestion(Tree* current)
 {
 	assert(current != NULL);
@@ -40,93 +45,8 @@ bool IsQuestion(Tree* current)
 	return current->yes;
 }
 
-void skip_words(FILE* file)
-{
-    char str[100];
-    fscanf(file, "%[^()]", str);
-}
 
-void skip_brackets(FILE* file)
-{
-    char c = getc(file);
-
-    assert(c=='(');
-
-    int brace = 1;
-    while(brace)
-    {
-        c = getc(file);
-        if(c == '(') brace++;
-        if(c == ')') brace--;
-    }
-}
-
-bool find_new_start_positions(unsigned long int *left_start_position, unsigned long int *right_start_position, unsigned long int start_position, FILE* file)
-{
-    fseek(file, start_position, SEEK_SET);
-
-    skip_words(file);
-
-    if(getc(file) != '(')
-        return false;
-    else
-    {
-        ungetc('(', file);
-
-        *left_start_position = ftell(file)+1;
-
-        skip_brackets(file);
-
-        *right_start_position = ftell(file)+1;
-        return true;
-    }
-}
-
-Tree* _Tree_Read(unsigned long int start_position, FILE* file)
-{
-    char question[100];
-    unsigned long int left_start_position = 0,
-                     right_start_position = 0;
-
-    fseek(file, start_position, SEEK_SET);
-
-    fscanf(file, "%[^()]", question);
-
-    Tree* ret = init_new_part_of_tree(question);
-
-    if(find_new_start_positions(&left_start_position, &right_start_position, start_position, file))
-    {
-        ret->yes = _Tree_Read( left_start_position, file);
-        ret->no  = _Tree_Read(right_start_position, file);
-    }
-
-    return ret;
-}
-
-Tree* Tree_Read(FILE* file)
-{
-    unsigned long int start_position = 0;
-
-    return _Tree_Read(start_position, file);
-}
-
-void Tree_Save(Tree* current, FILE* file) //сначала левое, потом - правое
-{
-    assert(current != NULL);
-
-    fprintf(file, "%s", current->question);
-
-    if(IsQuestion(current))
-    {
-        fprintf(file, "(");
-        Tree_Save(current->yes, file);
-        fprintf(file, ")(");
-        Tree_Save(current->no, file);
-        fprintf(file, ")");
-    }
-}
-
-Tree* copy(Tree* current)
+Tree* copy_leaf(Tree* current)
 {
 	assert(current != NULL);
 	Tree* copy_tree = new Tree;
@@ -145,6 +65,7 @@ Tree* copy(Tree* current)
 	return copy_tree;
 }
 
+
 void add_new_element(Tree* current,char* added_element, char* added_question)
 {
 	assert(current != NULL);
@@ -152,7 +73,7 @@ void add_new_element(Tree* current,char* added_element, char* added_question)
 	Tree *new_yes,
 	     *new_no;
 
-	new_no  = copy(current);
+	new_no  = copy_leaf(current);
 	new_yes = init_new_part_of_tree(added_element);
 
 	strcpy(current->question, added_question);
@@ -160,16 +81,19 @@ void add_new_element(Tree* current,char* added_element, char* added_question)
 	current->yes = new_yes;
 }
 
+
 void clean_stdin()
 {
 	while(getchar() != '\n');
 }
+
 
 void akinator(Tree* current)
 {
 	char answer,
 	     added_element[1000],
 	     added_question[1000];
+
 	if(IsQuestion(current))
 	{
 		do
@@ -208,20 +132,6 @@ void akinator(Tree* current)
 	}
 }
 
-void Tree_Destroy(Tree* current)
-{
-    if(IsQuestion(current))
-    {
-        Tree_Destroy(current->no);
-        Tree_Destroy(current->yes);
-    }
-
-    assert(current->question!=NULL);
-    delete [] current->question;
-    assert(current!=NULL);
-    delete current ;
-}
-
 int main()
 {
 	FILE* f = fopen(DATA_FILE, "r");
@@ -236,7 +146,9 @@ int main()
 	    do
         {
             printf("\nNEW GAME?:Y/N\n");
+
             answer = getchar();
+
             clean_stdin();
         }
         while((answer!='Y')&&(answer!='N'));
@@ -253,7 +165,7 @@ int main()
 	Tree_Save(tree, f);
     fclose(f);
 
-	Tree_Destroy(tree);
+	//Tree_Destroy(tree);
 	return 0;
 }
 
